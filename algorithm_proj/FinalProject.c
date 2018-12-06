@@ -13,6 +13,8 @@
 #define MAXLINE 300
 #define _CRT_NONSTDC_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#define MAXDIST 0x7fffffff
+#define MAXSITE 100
 #define RED 'R'
 #define BLACK 'B'
 
@@ -101,6 +103,7 @@ void exit_prog(void)
 	printf("\t\t|                                               |\n");
 	printf("\t\t=================================================\n\n\n");
 	scanf("%c",&ch);
+	//_getch();
 	exit(1);
 }
 
@@ -140,6 +143,66 @@ void login(member *info)
 		exit_prog();
 	}
 }
+
+/////////////////shorted path
+void dijkstra(int **arr, int *dist, int *path, int a, int b, int n) {
+	int i, j, k = 0;
+	int res = 0, fg = 0;
+	int x = b;
+ 	for (i = 0; i < n; i++) {
+		if (dist[i] + arr[i][b] == dist[b] && i != b && i != a) {
+			path[k++] = i;
+		}
+	}
+	int ini = 0;
+	while (1) {
+		int x = k;
+		if (ini == k)
+			break;
+		for (i = ini; i < x; i++) {
+			for (j = 0; j < n; j++) {
+				if ((dist[j] + arr[j][path[i]] == dist[path[i]]) && j != path[i] && j != a) {
+					path[k++] = j;
+				}
+			}
+		}
+		ini = x;
+	}
+}
+int *Shortest_Path(int **arr, int n, int s, int d) {		// n = number of sites, s = start site, d = destination
+	int i, j, min, bk;
+ 	int *flag = (int*)malloc(sizeof(int)*n);
+	int *dist = (int*)malloc(sizeof(int)*n);
+ 	int *path = (int*)malloc(sizeof(int)*n);
+	for (j = 0; j < n; j++)
+		path[j] = MAXSITE;
+ 	for (i = 0; i < n; i++) {
+		flag[i] = 0;
+		dist[i] = MAXDIST;
+	}
+	*(dist + s) = 0;
+	for (i = 0; i < n; i++) {
+		min = MAXDIST;
+		for (j = 0; j < n; j++) {
+			if (min > dist[i] && flag[j] == 0) {
+				min = dist[i] + arr[i][j];
+				bk = j;
+			}
+		}
+ 		flag[bk] = 1;
+		for (j = 0; j < n; j++) {
+			if (dist[j] > arr[bk][j] + dist[bk] && arr[bk][j] != 1001)
+				dist[j] = arr[bk][j] + dist[bk];
+		}
+	}
+ 	dijkstra(arr, dist, path, s, d, n);
+ 	free(dist);
+	free(flag);
+ 	return path;
+}
+ //////////////////////////////////
+
+
 
 char depth[100];
 int di;
@@ -490,9 +553,9 @@ City citylist[100] = { {"Seoul", 37.566, 126.978}, {"Beijing", 39.900, 116.401},
 	,{"Busan", 35.179, 129.074},{"Jeju", 33.499, 126.531}, {"Kyoto", 35.011, 135.768}, {"Sapporo", 43.062, 141.354}
 	,{"Sydney", -33.873, 151.206}, {"Macau", 22.180, 113.537}, {"Bangkok", 13.753, 100.501},{"Jakarta",-6.216,106.854}
 	,{"Bandung",-6.903,107.633}, {"Bali",-8.672,115.213}, {"Singapore",1.371,103.855}, {"Bangkok",13.784,100.523}
-	,{"Hochimin",10.842,106.692}, {"Kuala_lumpur",3.152,101.678}, {"Kota_manado",1.494,124.858}, {"Perth",-31.956,115.871}
+	,{"Hochimin",10.842,106.692}, {"Kuala lumpur",3.152,101.678}, {"Kota manado",1.494,124.858}, {"Perth",-31.956,115.871}
 	,{"Melbourne",-37.776,144.929}, {"Sydney",-33.730,151.155}, {"Canberra",-35.313,149.117}, {"Brisbane",-27.461,153.029}
-	,{"Gold_coast",-28.375,153.399}, {"Wellington",-41.281,174.778}, {"Christchurch",-43.521,172.601}, {"Maynila",14.593,120.982}
+	,{"Gold coast",-28.375,153.399}, {"Wellington",-41.281,174.778}, {"Christchurch",-43.521,172.601}, {"Maynila",14.593,120.982}
 	,{"Taipei",25.057,121.575}, {"ChungChing",29.426,106.913}, {"HongKong",22.292,114.132}, {"Shanghai",31.341,121.516}
 	,{"Yokohama",35.461,139.632}, {"Osaka",34.703,135.487}, {"Hiroshima",34.393,132.461}, {"Indore",22.713,75.876}
 	,{"Agra",27.203,78.014}, {"Dakah",23.825,90.413}, {"Kolakata",22.581,88.351}, {"Myanmar",21.868,96.871}
@@ -548,14 +611,15 @@ int **InsertSite(void) {
 	for (i = 0; i < 100; i++) {
 		Site_Graph[i] = (int*)malloc(sizeof(int) * 100);
 		for (j = 0; j < 100; j++) {
-			Site_Graph[i][j] = 0;
+			if(i==j) Site_Graph[i][j] = 0;
+			else Site_Graph[i][j] = MAXDIST;
 		}
 	}
 	srand(time(NULL));
 	for (i = 0; i < 300;) {
 		x = rand() % 100;
 		y = rand() % 100;
-		if (x <= y || Site_Graph[y][x]) continue;
+		if (x <= y || (Site_Graph[y][x] != MAXDIST && Site_Graph[y][x] != 0)) continue;
 		Site_Graph[y][x] = (int)GetDistance(citylist[y], citylist[x]);
 		Site_Graph[x][y] = Site_Graph[y][x];
 		i++;
@@ -678,6 +742,35 @@ int reserve_schedule(member *info, Date *start, Date *finish, int minroute[], in
 	return (transport_cost + hotel_cost); /* 정상적으로 예약 및 스케줄링 완료 */
 }
 
+/*
+void check_reservation(DayInfo *info){
+   int i = info->day, j = 10, k = 0;
+   char s1[15] = "JAKARTA";
+   printf("|==========================================================================================|\n");
+   printf("|                              RESERVATION INFRORMATION                                    |\n");
+   printf("|                              ------------------------                                    |\n");
+   printf("|------------------------------------------------------------------------------------------|\n");
+   printf("|USER ID:%d                                                                                |\n",i);
+   printf("|------------------------------------------------------------------------------------------|\n");
+   printf("| DAY   |       SITE       |      HOTEL     |       CHECK-IN       |       CHECK-OUT       |\n");
+   printf("|-------|------------------|----------------|----------------------|-----------------------|\n");
+   for (k = 0; k <=i ; k++)
+   {
+      printf("| DAY%3d|    %14s|     HOTEL%3d   |        %2d:00         |        %2d:00          |\n", k, info->site,info->hotel,info->check_in, info->check_out);
+
+      printf("|-------|------------------|----------------|----------------------|-----------------------|\n");
+
+   }
+   printf("|------------------------------------------------------------------------------------------|\n");
+   printf("|                                                                                          |\n");
+   printf("|------------------------------THANK YOU FOR USING TEAM9 TOUR------------------------------|\n");
+   printf("|                                                                                          |\n");
+   printf("|==========================================================================================|\n");
+   return 0;
+
+}
+*/
+
 int main() {
 	arr = InsertSite(); /* 2-dimensional matrix for containing connectivity and weights of node */
 	int cnt = 0;
@@ -784,6 +877,16 @@ int main() {
 					for (j = 0; j < 100; j++) {
 						if (!strcmp(str, citylist[j].name)) {
 							destination[i] = j;
+							/////////////////////////////////
+							int *path = Shortest_Path(arr, 100, 0, destination[i]);
+							printf("\n(%s)", citylist[0].name);
+							for (int k = 0; k < 100; k++) {
+								if (path[k] == MAXSITE) break;
+								printf("->(%s)", citylist[path[k]].name);
+							}
+							printf("->(%s)\n", citylist[destination[i]].name);
+							/////////////////////////////////
+							free(path);
 							break;
 						}
 					}
@@ -827,846 +930,3 @@ int main() {
 
 }
 #endif
-
-#if 0
-//BROUGHT TO YOU BY code-projects.org//
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define _CRT_NONSTDC_NO_WARNINGS    // ∫Ò«•¡ÿ «‘ºˆ∏¶ ªÁøÎ«ﬂ¿ª ∂ß ø°∑Ø πÊ¡ˆ
-#define _CRT_SECURE_NO_WARNINGS
-
-char ch[10][130] = { "Cardiff Express","Belfast Express","Derby Express","Chester Express","Newport Express","Truro Express" };
-char name[32][100] = { '\0' };
-char number[32][2] = { '\0' };
-int num1[32] = { 0 };
-int trno;
-void login();
-void bus();//for list of bus
-void name_number(int booking, char numstr[100]);
-void booking();//for booking the tickets
-int read_number(int trno);//for reading the number from the file
-void read_name(int trno);//for reading the name from the file
-void status();//for printing the status by user input
-void status_1(int trno);//for printing the status while booking ticket
-void cancle();
-
-int main()
-{
-	//login();
-	int num, i;
-	do {
-		system("cls");
-		printf("\n\n\n");
-		printf("====================================== WELCOME TO BUS RESERVATION SYSTEM ======================================\n\n\n");
-		printf("\t\t\t\t\t[1]=> View Bus List\n");
-		printf("\n");
-		printf("\t\t\t\t\t[2]=> Book Tickets\n");
-		printf("\n");
-		printf("\t\t\t\t\t[3]=> Cancle Booking\n");
-		printf("\n");
-		printf("\t\t\t\t\t[4]=> Bus Status Board\n");
-		printf("\n");
-		printf("\t\t\t\t\t[5]=> Exit\n\n");
-		printf("===============================================================================================================\n\n");
-		printf("\t\t\tEnter Your Choice:: ");
-		scanf("%d", &num);
-		switch (num)
-		{
-		case 1:
-			bus();//for list of bus
-			break;
-		case 2:
-			booking();//for booking the tickets
-			break;
-		case 3:
-			cancle();
-			break;
-		case 4:
-			status();
-			break;
-		}
-		getch();
-	} while (num != 5);
-	system("CLS");
-	printf("\t----------------------------------------------------------------------------------------------------------\n");
-	printf("\t\t\t\t\tThank You For Using This System\t\t\t\t\t\t\n");
-	printf("\t----------------------------------------------------------------------------------------------------------\n");
-	printf("\t\t\t Brought To You By code-projects.org");
-	getch();
-	return 0;
-}
-
-
-void bus()
-{
-	system("cls");
-	printf("\n\n\n");
-	printf("=========================================== BUS RESERVATION SYSTEM ============================================\n\n\n");
-	printf("\t\t\t\t\t[1]  =>  %s\n", ch[0]);
-	printf("\n");
-	printf("\t\t\t\t\t[2]  =>  %s\n", ch[1]);
-	printf("\n");
-	printf("\t\t\t\t\t[3]  =>  %s\n", ch[2]);
-	printf("\n");
-	printf("\t\t\t\t\t[4]  =>  %s\n", ch[3]);
-	printf("\n");
-	printf("\t\t\t\t\t[5]  =>  %s\n", ch[4]);
-}
-
-void booking()
-{
-
-	int i = 0;
-	char numstr[100];
-	system("cls");
-	printf("=========================================== BUS RESERVATION SYSTEM ============================================\n\n\n");//for entering train number
-	bus();//for seeing train least
-	printf("Enter the Bus number:--->");
-	scanf("%d", &trno);
-	system("cls");
-	printf("=========================================== BUS RESERVATION SYSTEM ============================================\n\n\n");//for selecting coach
-	printf("Your Bus Number is %d ********** %s", trno, ch[trno - 1]);
-	status_1(trno);
-	FILE *f1, *fopen();//for reading the seats from the user.
-	char str1[80] = "32", str2[4], str3[4];
-	int seat1, seat2, booking = 0;
-	if (trno == 1)
-	{
-		f1 = fopen("tr1.txt", "r+");
-		fgets(str1, 80, f1);
-		fclose(f1);
-	}
-	else if (trno == 2)
-	{
-		f1 = fopen("tr2.txt", "r+");
-		fgets(str1, 80, f1);
-		fclose(f1);
-	}
-	else if (trno == 3)
-	{
-		f1 = fopen("tr3.txt", "r+");
-		fgets(str1, 80, f1);
-		fclose(f1);
-	}
-	else if (trno == 4)
-	{
-		f1 = fopen("tr4.txt", "r+");
-		fgets(str1, 80, f1);
-		fclose(f1);
-	}
-	else if (trno == 5)
-	{
-		f1 = fopen("tr5.txt", "r+");
-		fgets(str1, 80, f1);
-		fclose(f1);
-	}
-	seat1 = atoi(str1);//covert the string into number
-	if (seat1 <= 0)
-	{
-		printf("There is no blank seat in this bus ");
-	}
-	else
-	{
-		printf("\n\n\n\t\t\t\tAvailable Seats:------>%d\n", seat1);
-		printf("\n\t\t\t\tNumber of Tickets:----->");
-		scanf("%d", &booking);
-		printf("\n");
-
-		seat1 = seat1 - booking;
-		itoa(trno, numstr, 10);
-		name_number(booking, numstr);
-		printf("\n\t\t\t\tThe Total booking amount is %d", 200 * booking);
-		itoa(seat1, str1, 10);
-		//for reading the seats from the user.
-		if (trno == 1)
-		{
-			f1 = fopen("tr1.txt", "w");
-			fputs(str1, f1);
-			fclose(f1);
-		}
-		else if (trno == 2)
-		{
-			f1 = fopen("tr2.txt", "w");
-			fputs(str1, f1);
-			fclose(f1);
-		}
-		else if (trno == 3)
-		{
-			f1 = fopen("tr3.txt", "w");
-			fputs(str1, f1);
-			fclose(f1);
-		}
-		else if (trno == 4)
-		{
-			f1 = fopen("tr4.txt", "w");
-			fputs(str1, f1);
-			fclose(f1);
-		}
-		else if (trno == 5)
-		{
-			f1 = fopen("tr5.txt", "w");
-			fputs(str1, f1);
-			fclose(f1);
-		}
-	}
-}
-
-
-
-void name_number(int booking, char numstr[100])
-{
-	char tempstr[100], tempstr1[12] = "status", tempstr2[12] = "number";
-	int number;
-	FILE *a, *b;
-	int i = 0;
-	strcat(numstr, ".txt");
-	strcat(tempstr1, numstr);
-	strcat(tempstr2, numstr);
-	a = fopen(tempstr1, "a");//for open the file to write the name in the file
-	b = fopen(tempstr2, "a");//for open the file for writing the number in the file
-	for (i = 0; i < booking; i++)//for entering the person name and seat number in the file
-	{
-		printf("============================Enter the details for ticket no %d============================\n\n\n", i + 1);
-		printf("\t\t\t\tEnter the seat number:--->");
-		scanf("%d", &number);
-		printf("\t\t\t\tEnter the name of person:--->");
-		scanf("%s", name[number - 1]);
-		printf("\n======================================================================================================\n\n");
-		printf("\n");
-		itoa(number, tempstr, 10);
-		fprintf(a, "%s ", name[number - 1]);
-		fprintf(b, "%s ", tempstr);
-
-	}
-	fclose(a);
-	fclose(b);
-}
-
-
-
-int read_number(int trno)//for putting the numeric value in the array
-{
-	char tempstr[100], tempstr2[12] = "number";
-	FILE *a, *b;
-	char numstr[100];
-	int i = 0, j = 0, k;
-	itoa(trno, numstr, 10);
-	strcat(numstr, ".txt");
-	strcat(tempstr2, numstr);
-	a = fopen(tempstr2, "a+");//for open the file to write the name in the file
-	while (!feof(a))
-	{
-		number[i][j] = fgetc(a);
-
-		if (number[i][j] == ' ')
-		{
-			j = 0;
-			i++;
-		}
-		else
-		{
-			j++;
-		}
-	}
-	k = i;
-	for (i = 0; i < k; i++)
-	{
-		num1[i] = atoi(number[i]);
-	}
-	fclose(a);
-	return k;
-}
-
-
-void read_name(int trno)//for putting the numeric value in the array
-{
-	char tempstr1[12] = "status";
-	FILE *b;
-	char numstr[100];
-	int i = 0, j = 0, k = 0;
-	itoa(trno, numstr, 10);
-	strcat(numstr, ".txt");
-	strcat(tempstr1, numstr);
-	b = fopen(tempstr1, "a+");//for open the file to write the name in the file
-	while (!feof(b))
-	{
-		name[i][j] = fgetc(b);
-
-		if (name[i][j] == ' ')
-		{
-			j = 0;
-			i++;
-		}
-		else
-		{
-			j++;
-		}
-
-	}
-	name[i][j] = '\0';
-	k = i;
-	fclose(b);
-}
-
-void status()
-{
-	system("cls");
-	printf("=========================================== BUS RESERVATION SYSTEM ============================================\n\n\n");
-	int i, trno, index = 0, j;
-	printf("Enter the number of bus:---->");
-	scanf("%d", &trno);
-	j = read_number(trno);
-	read_name(trno);
-	printf("____________________________________________________________________________________________________________________\n");
-	printf("                                      Bus.no-->%d---->%s                                                            \n", trno, ch[trno - 1]);
-	printf("____________________________________________________________________________________________________________________\n");
-	char tempname[33][10] = { "Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty " };
-	for (i = 0; i < j; i++)
-	{
-		strcpy(tempname[num1[i]], name[i]);
-	}
-	for (i = 0; i < 8; i++)
-	{
-		printf("\t\t\t\t");
-		for (j = 0; j < 4; j++)
-		{
-			printf("%d.%s\t", index + 1, tempname[index + 1]);
-			index++;
-		}
-		printf("\n");
-	}
-}
-
-void status_1(int trno)
-{
-	printf("Your Bus Number is %d ********** %s", trno, ch[trno - 1]);
-	system("cls");
-	printf("=========================================== BUS RESERVATION SYSTEM ============================================\n\n\n");
-	int i, index = 0, j;
-	j = read_number(trno);
-	read_name(trno);
-	char tempname[33][10] = { "Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty ","Empty " };
-	for (i = 0; i < j; i++)
-	{
-		strcpy(tempname[num1[i]], name[i]);
-	}
-	for (i = 0; i < 8; i++)
-	{
-		printf("\t\t\t\t");
-		for (j = 0; j < 4; j++)
-		{
-			printf("%d.%s\t", index + 1, tempname[index + 1]);
-			index++;
-		}
-		printf("\n");
-	}
-}
-
-
-void cancle()
-{
-	int seat_no, i, j;
-	char numstr[100], tempstr2[15] = "number", tempstr1[15] = "status";
-	printf("Enter the bus number:---->");
-	scanf("%d", &trno);
-	itoa(trno, numstr, 10);
-	strcat(numstr, ".txt");
-	strcat(tempstr1, numstr);
-	strcat(tempstr2, numstr);
-	read_number(trno);
-	read_name(trno);
-	status_1(trno);
-	printf("Enter the seat number:--->");
-	scanf("%d", &seat_no);
-	FILE *a, *b;
-	a = fopen(tempstr1, "w+");
-	b = fopen(tempstr2, "w+");
-	for (i = 0; i < 32; i++)
-	{
-		if (num1[i] == seat_no)
-		{
-			for (j = 0; j < 32; j++)
-			{
-				if (num1[j] != seat_no && num1[j] != 0)
-				{
-					fprintf(b, "%d ", num1[j]);
-					fprintf(a, "%s", name[j]);
-				}
-				else if (num1[j] == seat_no && num1[j] != 0)
-				{
-					strcpy(name[j], "Empty ");
-				}
-			}
-		}
-	}
-	fclose(a);
-	fclose(b);
-	printf("\n\n");
-	printf("======================================================================================================\n");
-	printf("\t\t\t\tYour 200 rupees has been Returned\t\t\t\n");
-	printf("======================================================================================================\n");
-}
-
-
-void login()
-{
-	int a = 0, i = 0;
-	char uname[10], c = ' ';
-	char pword[10], code[10];
-	char user[10] = "user";
-	char pass[10] = "pass";
-	do
-	{
-		system("cls");
-
-		printf("\n  =========================  LOGIN FORM  =========================  ");
-		printf(" \n                       ENTER USERNAME:-");
-		scanf("%s", &uname);
-		printf(" \n                       ENTER PASSWORD:-");
-		while (i < 10)
-		{
-			pword[i] = getch();
-			c = pword[i];
-			if (c == 13) break;
-			else printf("*");
-			i++;
-		}
-		pword[i] = '\0';
-		//char code=pword;
-		i = 0;
-		//scanf("%s",&pword); 
-		if (strcmp(uname, "user") == 0 && strcmp(pword, "pass") == 0)
-		{
-			printf("  \n\n\n       WELCOME TO OUR SYSTEM !!!! LOGIN IS SUCCESSFUL");
-			printf("\n\n\n\t\t\t\tPress any key to continue...");
-			getch();//holds the screen
-			break;
-		}
-		else
-		{
-			printf("\n        SORRY !!!!  LOGIN IS UNSUCESSFUL");
-			a++;
-
-			getch();//holds the screen
-
-		}
-	} while (a <= 2);
-	if (a > 2)
-	{
-		printf("\nSorry you have entered the wrong username and password for four times!!!");
-
-		getch();
-
-	}
-	system("cls");
-}//bus ticket
-#endif
-
-
-//Train reservation
-#if 0		//Train Reservation
-/**********************************************PREPROCESSORS**********************************************************/
-//Train Reservation System - BROUGHT TO YOU BY : code-projects.org
-//Working on basic structure
-//including all libraries for now
-#include<stdio.h>
-#include<conio.h>
-#include<stdlib.h>
-#include<string.h>
-
-#define _CRT_NONSTDC_NO_WARNINGS    // ∫Ò«•¡ÿ «‘ºˆ∏¶ ªÁøÎ«ﬂ¿ª ∂ß ø°∑Ø πÊ¡ˆ
-#define _CRT_SECURE_NO_WARNINGS
-
-#pragma warning(disable : 4996)
-
-
-/*******************************************GLOBAL VARIABLES**********************************************************/
-//ALl the globle variables and the composite data types will be declared here
-typedef struct {
-	char name[50];
-	int train_num;
-	int num_of_seats;
-}pd;
-
-
-
-
-/*******************************************FUNCTION PROTOTYPE**********************************************************/
-//function prototypes to be used
-void reservation(void);							//main reservation function
-void viewdetails(void);							//view details of all the trains
-void cancel(void);
-void printticket(char name[], int, int, float);	//print ticket 
-void specifictrain(int);						//print data related to specific train
-float charge(int, int);							//charge automatically w.r.t number of seats and train
-void login();
-
-
-/******************************************FUNCTION DECLARATION**********************************************************/
-
-/*********************************************MAIN()*************************************************/
-
-int main()
-
-{
-	system("cls");
-	printf("\t\t=================================================\n");
-	printf("\t\t|                                               |\n");
-	printf("\t\t|        -----------------------------          |\n");
-	printf("\t\t|           TRAIN TICKET RERS. SYSTEM           |\n");
-	printf("\t\t|        -----------------------------          |\n");
-	printf("\t\t|                                               |\n");
-	printf("\t\t|                                               |\n");
-	printf("\t\t|                                               |\n");
-	printf("\t\t|              BROUGHT TO YOU BY                |\n");
-	printf("\t\t|           |  code-projects.org  |             |\n");
-	printf("\t\t|                                               |\n");
-	printf("\t\t=================================================\n\n\n");
-
-
-	printf(" \n Press any key to continue:");
-
-	getch();
-	system("cls");
-	//login();
-	int menu_choice, choice_return;
-start:
-	system("cls");
-	printf("\n=================================\n");
-	printf("    TRAIN RESERVATION SYSTEM");
-	printf("\n=================================");
-	printf("\n1>> Reserve A Ticket");
-	printf("\n------------------------");
-	printf("\n2>> View All Available Trains");
-	printf("\n------------------------");
-	printf("\n3>> Cancel Reservation");
-	printf("\n------------------------");
-	printf("\n4>> Exit");
-	printf("\n------------------------");
-	printf("\n\n-->");
-	scanf("%d", &menu_choice);
-	switch (menu_choice)
-	{
-	case 1:
-		reservation();		//Fucntion still not added
-		break;
-	case 2:
-		viewdetails();
-		printf("\n\nPress any key to go to Main Menu..");
-		getch();
-		break;
-	case 3:
-		cancel();
-		//function not added. code has been removed due to some errors
-		break;
-	case 4:
-		return(0);
-	default:
-		printf("\nInvalid choice");
-	}
-	goto start;
-	return(0);
-}
-
-/*********************************************VIEWDETAILS()*************************************************/
-
-//The function is yet not completed, need more details to be added!
-//timings of the trains are still missing 
-
-void viewdetails(void)
-{
-	system("cls");
-	printf("-----------------------------------------------------------------------------");
-	printf("\nTr.No\tName\t\t\tDestinations\t\tCharges\t\tTime\n");
-	printf("-----------------------------------------------------------------------------");
-	printf("\n1001\tRed Lines Express\tBoston to Manhattan\tRs.5000\t\t9am");
-	printf("\n1002\tRed Lines Express\tManhattan To Boston\tRs.5000\t\t12pm");
-	printf("\n1003\tLA City Express\t\tBoston To L.A\t\tRs.4500\t\t8am");
-	printf("\n1004\tLA City Express\t\tL.A To Boston\t\tRs.4500\t\t11am");
-	printf("\n1005\tIron City Express\tBoston To Chicago\tRs.4000\t\t7am");
-	printf("\n1006\tIron City Express\tChicago To Boston\tRs.4000\t\t9.30am");
-	printf("\n1007\tKeystone Express\tBoston To Washington\tRs.3500\t\t1pm");
-	printf("\n1008\tKeystone Express\tWashington To Boston\tRs.3500\t\t4pm");
-	printf("\n1009\tMeteor Express\t\tBoston To Miami\t\tRs.6000\t\t3.35pm");
-	printf("\n1009\tMeteor Express\t\tMiami To Boston\t\tRs.6000\t\t4.15pm");
-
-}
-
-/*********************************************RESERVATION()*************************************************/
-
-void reservation(void)
-{
-	char confirm;
-	int i = 0;
-	float charges;
-	pd passdetails;
-	FILE *fp;
-	fp = fopen("seats_reserved.txt", "a");
-	system("cls");
-
-	printf("\nEnter Your Name:> ");
-	fflush(stdin);
-	gets(passdetails.name);
-	//error here have to take input of the name 
-	printf("\nEnter Number of seats:> ");
-	scanf("%d", &passdetails.num_of_seats);
-	printf("\n\n>>Press Enter To View Available Trains<< ");
-	getch();
-	system("cls");
-	viewdetails();
-	printf("\n\nEnter train number:> ");
-start1:
-	scanf("%d", &passdetails.train_num);
-	if (passdetails.train_num >= 1001 && passdetails.train_num <= 1010)
-	{
-		charges = charge(passdetails.train_num, passdetails.num_of_seats);
-		printticket(passdetails.name, passdetails.num_of_seats, passdetails.train_num, charges);
-	}
-	else
-	{
-		printf("\nInvalid train Number! Enter again--> ");
-		goto start1;
-	}
-
-	printf("\n\nConfirm Ticket (y/n):>");
-start:
-	scanf(" %c", &confirm);
-	if (confirm == 'y')
-	{
-		fprintf(fp, "%s\t\t%d\t\t%d\t\t%.2f\n", &passdetails.name, passdetails.num_of_seats, passdetails.train_num, charges);
-		printf("==================");
-		printf("\n Reservation Done\n");
-		printf("==================");
-		printf("\nPress any key to go back to Main menu");
-	}
-	else
-	{
-		if (confirm == 'n') {
-			printf("\nReservation Not Done!\nPress any key to go back to  Main menu!");
-		}
-		else
-		{
-			printf("\nInvalid choice entered! Enter again-----> ");
-			goto start;
-		}
-	}
-	fclose(fp);
-	getch();
-}
-
-/*********************************************CHARGE()*************************************************/
-
-float charge(int train_num, int num_of_seats)
-{
-	if (train_num == 1001)
-	{
-		return(5000.0*num_of_seats);
-	}
-	if (train_num == 1002)
-	{
-		return(5000.0*num_of_seats);
-	}
-	if (train_num == 1003)
-	{
-		return(4500.0*num_of_seats);
-	}
-	if (train_num == 1004)
-	{
-		return(4500.0*num_of_seats);
-	}
-	if (train_num == 1005)
-	{
-		return(4000.0*num_of_seats);
-	}
-	if (train_num == 1006)
-	{
-		return(4000.0*num_of_seats);
-	}
-	if (train_num == 1007)
-	{
-		return(3500.0*num_of_seats);
-	}
-	if (train_num == 1008)
-	{
-		return(3500.0*num_of_seats);
-	}
-	if (train_num == 1009)
-	{
-		return(6000.0*num_of_seats);
-	}
-	if (train_num == 1010)
-	{
-		return(6000.0*num_of_seats);
-	}
-}
-
-
-/*********************************************PRINTTICKET()*************************************************/
-
-void printticket(char name[], int num_of_seats, int train_num, float charges)
-{
-	system("cls");
-	printf("-------------------\n");
-	printf("\tTICKET\n");
-	printf("-------------------\n\n");
-	printf("Name:\t\t\t%s", name);
-	printf("\nNumber Of Seats:\t%d", num_of_seats);
-	printf("\nTrain Number:\t\t%d", train_num);
-	specifictrain(train_num);
-	printf("\nCharges:\t\t%.2f", charges);
-}
-
-/*********************************************SPECIFICTRAIN()*************************************************/
-
-void specifictrain(int train_num)
-{
-
-	if (train_num == 1001)
-	{
-		printf("\nTrain:\t\t\tRed Lines Express");
-		printf("\nDestination:\t\tBoston to Manhattan");
-		printf("\nDeparture:\t\t9am ");
-	}
-	if (train_num == 1002)
-	{
-		printf("\nTrain:\t\t\tRed Lines Express");
-		printf("\nDestination:\t\tManhattan to Boston");
-		printf("\nDeparture:\t\t12pm");
-	}
-	if (train_num == 1003)
-	{
-		printf("\nTrain:\t\t\tLA City Express");
-		printf("\nDestination:\t\tBoston to L.A");
-		printf("\nDeparture:\t\t8am");
-	}
-	if (train_num == 1004)
-	{
-		printf("\nTrain:\t\t\tLA City Express");
-		printf("\nDestination:\t\tL.A to Boston");
-		printf("\nDeparture:\t\t11am ");
-	}
-	if (train_num == 1005)
-	{
-		printf("\nTrain:\t\t\tIron City Express");
-		printf("\nDestination:\t\tBoston to Chicago");
-		printf("\nDeparture:\t\t7am");
-	}
-	if (train_num == 1006)
-	{
-		printf("\ntrain:\t\t\tIron City Express");
-		printf("\nDestination:\t\tChicago to Boston");
-		printf("\nDeparture:\t\t9.30am ");
-	}
-	if (train_num == 1007)
-	{
-		printf("\ntrain:\t\t\tKeystone Express");
-		printf("\nDestination:\t\tBoston to Washington");
-		printf("\nDeparture:\t\t1pm ");
-	}
-	if (train_num == 1008)
-	{
-		printf("\ntrain:\t\t\tKeystone Express");
-		printf("\n Destination:\t\tWashington to Boston");
-		printf("\nDeparture:\t\t4pm ");
-	}
-	if (train_num == 1009)
-	{
-		printf("\ntrain:\t\t\tMeteor Express");
-		printf("\nDestination:\t\tBoston to Miami");
-		printf("\nDeparture:\t\t3.35pm ");
-	}
-	if (train_num == 1010)
-	{
-		printf("\ntrain:\t\t\tMeteor Express");
-		printf("\nDestination:\t\tMiami to Boston");
-		printf("\nDeparture:\t\t1.15 ");
-	}
-}
-
-void login()
-{
-	int a = 0, i = 0;
-	char uname[10], c = ' ';
-	char pword[10], code[10];
-	char user[10] = "user";
-	char pass[10] = "pass";
-	do
-	{
-
-		printf("\n  =======================  LOGIN FORM  =======================\n  ");
-		printf(" \n                       ENTER USERNAME:-");
-		scanf("%s", &uname);
-		printf(" \n                       ENTER PASSWORD:-");
-		while (i < 10)
-		{
-			pword[i] = getch();
-			c = pword[i];
-			if (c == 13) break;
-			else printf("*");
-			i++;
-		}
-		pword[i] = '\0';
-		//char code=pword;
-		i = 0;
-		//scanf("%s",&pword); 
-		if (strcmp(uname, "user") == 0 && strcmp(pword, "pass") == 0)
-		{
-			printf("  \n\n\n       WELCOME TO OUR SYSTEM !! YOUR LOGIN IS SUCCESSFUL");
-			printf("\n\n\n\t\t\t\tPress any key to continue...");
-			getch();//holds the screen
-			break;
-		}
-		else
-		{
-			printf("\n        SORRY !!!!  LOGIN IS UNSUCESSFUL");
-			a++;
-
-			getch();//holds the screen
-			system("cls");
-		}
-	} while (a <= 2);
-	if (a > 2)
-	{
-		printf("\nSorry you have entered the wrong username and password for four times!!!");
-
-		getch();
-
-	}
-	system("cls");
-}
-
-void cancel(void)   /* Sorry this function does not work. Coding is not completed. Codes have been removed due to some errors  */
-{
-	/*FILE *f,*t;
-	int i=0;
-	int trainnum;
-	t=fopen("seats_reserved.txt","w");
-	if ((f=fopen("seats_reserved.txt","r"))==NULL)
-	{
-		printf("NO RECORD ADDED.");
-		main();
-		* * * * *
-		*
-		*
-		*
-		*
-		*
-		*
-		*  /  missing codes  /
-	}
-	else*/
-	system("cls");
-	int trainnum;
-	printf("-----------------------\n");
-	printf("Enter the train number: \n");
-	printf("-----------------------\n");
-	fflush(stdin);
-	scanf("%i", &trainnum);
-	printf("\n\nCancelled");
-	getch();
-}
-
-#endif
-
