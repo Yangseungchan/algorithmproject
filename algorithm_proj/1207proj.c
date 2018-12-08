@@ -5,7 +5,7 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
-#include <conio.h>
+//#include <conio.h>
 
 #pragma warning(disable:4996)
 
@@ -61,11 +61,10 @@ typedef struct __dayinfo {
 	int transport_cost; int hotel_cost;
 }DayInfo;
 
+
 int user_id;
 Node **hotel;
 DayInfo TourInfo[100]; /* index 0 = 첫째날 ~ */
-
-
 
 City citylist[100] = { {"Seoul", 37.566, 126.978}, {"Beijing", 39.900, 116.401}, {"Tokyo", 35.689, 139.69}
 	,{"Busan", 35.179, 129.074},{"Jeju", 33.499, 126.531}, {"Kyoto", 35.011, 135.768}, {"Sapporo", 43.062, 141.354}
@@ -116,10 +115,15 @@ void getdateinformation(Date *d1, Date *d2, char *start, char *finish) {
 	token = strtok(NULL, "/"); d2->day = atoi(token);
 }
 
+int _getch(){
+    char c;
+    scanf("%c", &c);
+    return 0;
+}
 
 void exit_prog(void)
 {
-	system("cls");
+	//system("cls");
 	printf("\t\t=================================================\n");
 	printf("\t\t|                                               |\n");
 	printf("\t\t|        -----------------------------          |\n");
@@ -151,7 +155,7 @@ void login(member *info)
 	if (i == 1)
 	{
 		while (1) {
-			system("cls");
+			//system("cls");
 			printf("\n  =======================  LOGIN FORM  =======================\n  ");
 			printf(" \n\t\tENTER USER ID (6digit): ");
 			scanf(" %d", &temp);
@@ -167,6 +171,7 @@ void login(member *info)
 			}
 			else {
 				printf("\n\t\t=> PLEASE ENTER 6-DIGIT NUMBER\n");
+                printf("\n\t\t Press any key to continue..\n");
 				_getch();
 				_getch();
 			}
@@ -653,26 +658,24 @@ Node** Hotel_insert(void)
 }
 
 /* siteidx = 지역의 인덱스, duration = 해당 지역에 머물 기억, cost = 최대 가격, infoidx = */
-int hotel_reservation(int siteidx, int startday, int userid, int duration, int cost, int infoidx) { /* 사이트 인덱스와 비용을 입력받아 해당 사이트의 호텔 인덱스를 반환받는다 */
-	Node *node; int hotelidx; int i;
+int hotel_reservation(int siteidx, int startday, int userid, int duration, int cost, int infoidx){ /* 사이트 인덱스와 비용을 입력받아 해당 사이트의 호텔 인덱스를 반환받는다 */
+	Node *node; int hotelidx; int i; 
 	node = hotel[siteidx];
-	if (cost < duration * (siteidx)) { /* 가격 상한선보다 호텔의 최소가격이 더 큰 경우 -1반환; 호텔 가격 = duration * (siteidx + hotelidx) */
+	if(cost < duration * (siteidx)){ /* 가격 상한선보다 호텔의 최소가격이 더 큰 경우 -1반환; 호텔 가격 = duration * (siteidx + hotelidx) */
 		return -1;
 	}
-	else if (cost > duration * (siteidx + 99)) { /* 가격의 최갯값보다 가격의 상한선이 더 큰 경우 = 최대 가격이 가능한 경우 */
+	else if(cost > duration * (siteidx + 99)){ /* 가격의 최갯값보다 가격의 상한선이 더 큰 경우 = 최대 가격이 가능한 경우 */
+		hotelidx = rand() % 100;
 		cost = duration * (siteidx + 99);
-		hotelidx = 99;
 	}
-	else {
-		for (i = 0; i < 100; i++) {
-			if (cost == duration * (siteidx + i)) {
-				cost = duration * (siteidx + i);
-				break;
-			}
+	else{
+		for(i=0; i<100 && cost > duration * (siteidx + i);){
+			i++;
 		}
 		hotelidx = i;
 	}
 	RB_Insert(node, userid, 0, startday, duration, siteidx);
+	//printf("hotelidx : %d\n", hotelidx);
 	return hotelidx;
 }
 
@@ -705,7 +708,7 @@ int reserve_schedule(member *info, Date *start, Date *finish, int minroute[], in
 	int hotel_cost = 0;     /* 총 호텔비용 */
 	int decrement = 1;
 	if (numofroute - 1 > duration) { /* destination number is bigger than duration */
-		return -1;
+		return -3;
 	}
 	timetable = time_partition(numofroute, duration);
 	for (int i = 0; i < numofroute - 1; i++) {
@@ -725,7 +728,7 @@ int reserve_schedule(member *info, Date *start, Date *finish, int minroute[], in
 		transport_cost += temp_transcost; /* 총 교통수단에 temp_transcost 추가 */
 		part_budget -= temp_transcost;
 		if (temp_transcost > part_budget) {
-			printf("\t=> You don't have enough money for your transportation.\n");
+			//printf("\t=> You don't have enough money for your transportation.\n");
 			return -1;
 		}
 		if (i == 0) {
@@ -735,14 +738,14 @@ int reserve_schedule(member *info, Date *start, Date *finish, int minroute[], in
 			TourInfo[i].startday = TourInfo[i - 1].lastday + 1;
 		}
 		TourInfo[i].lastday = TourInfo[i].startday + timetable[i] - 1;
-		TourInfo[i].site_index = minroute[i];
+		TourInfo[i].site_index = minroute[i+1];
 		TourInfo[i].checkin_hour = 10 + rand() % 2;
 		TourInfo[i].checkout_hour = 15 + rand() % 2;
 		TourInfo[i].transport_cost = temp_transcost;
 		TourInfo[i].hotel_index = hotel_reservation(minroute[i + 1], start->day, info->id[info->index], duration, part_budget, i);
 		if (TourInfo[i].hotel_index == -1) {
-			printf("\t=> You don't have enough money for your hotel reservation\n");
-			return -1;
+			//printf("\t=> You don't have enough money for your hotel reservation\n");
+			return -2;
 		}
 		temp_hotelcost = duration * (TourInfo[i].hotel_index + TourInfo[i].site_index);
 		hotel_cost += temp_hotelcost;
@@ -755,8 +758,8 @@ int reserve_schedule(member *info, Date *start, Date *finish, int minroute[], in
 			break;
 		}
 		part_budget = total_budget / (numofroute - 1 - (decrement++));
-		printf("\tpart budget : %d\n", part_budget);
-		printf("\ttotal budget : %d\n", total_budget);
+		//printf("\tpart budget : %d\n", part_budget);
+		//printf("\ttotal budget : %d\n", total_budget);
 	}
 	return (transport_cost + hotel_cost); /* 정상적으로 예약 및 스케줄링 완료 */
 }
@@ -771,32 +774,37 @@ void PrintMinRoute(int destidx, int shortestpath[]) { /* 여러개의 목적지�
 }
 
 
-void check_reservation() {
-	int i = 0; int j = 10, k = 0;
-	for (k = 0; TourInfo[k].startday != -1; k++) {
-		i++;
-	}
-	printf("\t||============================================================================================||\n");
-	printf("\t||                              RESERVATION INFRORMATION                                      ||\n");
-	printf("\t||                              ------------------------                                      ||\n");
-	printf("\t||============================================================================================||\n");
-	printf("\t||  USER ID : %6d                                                                          ||\n", user_id);
-	printf("\t||============================================================================================||\n");
-	printf("\t||   DAY   |       SITE       |      HOTEL     |       CHECK-IN       |       CHECK-OUT       ||\n");
-	printf("\t||============================================================================================||\n");
-	for (k = 0; k <= i; k++)
-	{
-		printf("\t|| DAY%3d-%d|    %14s|     HOTEL%3d   |        %2d:00         |        %2d:00          ||\n",
-			TourInfo[k].startday, TourInfo[k].lastday, citylist[TourInfo[k].site_index].name, TourInfo[k].hotel_index, TourInfo[k].checkin_hour
-			, TourInfo[k].checkout_hour);
-		printf("\t||---------|------------------|----------------|----------------------|-----------------------||\n");
+void check_reservation(){
+   int i=0; int j = 10, k = 0;
+   for(k=0; TourInfo[k].startday != -1; k++){
+	   i++;
+   }
+   printf("|======================================================================================================|\n");
+   printf("|                                  RESERVATION INFRORMATION                                            |\n");
+   printf("|                                  ------------------------                                            |\n");
+   printf("|------------------------------------------------------------------------------------------------------|\n");
+   printf("|      USER ID:%d                                                                                  |\n",user_id);
+   printf("|------------------------------------------------------------------------------------------------------|\n");
+   printf("| DAY               |       SITE       |      HOTEL     |       CHECK-IN       |       CHECK-OUT       |\n");
+   printf("|-------------------|------------------|----------------|----------------------|-----------------------|\n");
+   for (k = 0; k <i ; k++)
+   {
+	  if(TourInfo[k].lastday == TourInfo[k].startday){
+		  printf("| DAY%3d            ", TourInfo[k].startday);
+	  }
+	  else{
+		  printf("| DAY%3d - %3d      ", TourInfo[k].startday, TourInfo[k].lastday);
+	  }
+        printf("|    %14s|     HOTEL%3d   |        %2d:00         |        %2d:00          |\n", 
+	  citylist[TourInfo[k].site_index].name, TourInfo[k].hotel_index, TourInfo[k].checkin_hour, TourInfo[k].checkout_hour);
+      printf("|-------------------|------------------|----------------|----------------------|-----------------------|\n");
 
-	}
-	printf("\t||============================================================================================||\n");
-	printf("\t||                                                                                            ||\n");
-	printf("\t||                              THANK YOU FOR USING TEAM12 TOUR                               ||\n");
-	printf("\t||                                                                                            ||\n");
-	printf("\t||============================================================================================||\n");
+   }
+   printf("|------------------------------------------------------------------------------------------------------|\n");
+   printf("|                                                                                                      |\n");
+   printf("|----------------------------------THANK YOU FOR USING TEAM9 TOUR--------------------------------------|\n");
+   printf("|                                                                                                      |\n");
+   printf("|======================================================================================================|\n");
 }
 
 int main(void) {
@@ -815,6 +823,7 @@ int main(void) {
 	char finishdate[MAXLINE];
 	int budget, numofdest, choice, duration;
 	int month_day[13] = { 0, 31, 59, };			//count month as day
+    int daypermonth[13] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	int minroute[100];
 	int result, routenum;
 	int i, j;
@@ -836,7 +845,7 @@ int main(void) {
 	info = (member *)malloc(sizeof(member));
 	info->index = 0;
 
-	system("cls");
+	//system("cls");
 	printf("\t\t=================================================\n");
 	printf("\t\t|                                               |\n");
 	printf("\t\t|        -----------------------------          |\n");
@@ -851,11 +860,11 @@ int main(void) {
 	printf("\t\t=================================================\n\n\n");
 	printf(" \n Press any key to continue..");
 	_getch();
-	system("cls");
+	//system("cls");
 	login(info);
 	_getch();
 	while (1) {
-		system("cls");
+		//system("cls");
 		printf("\n  =================================\n");
 		printf("      TOUR RESERVATION SYSTEM");
 		printf("\n  =================================");
@@ -871,12 +880,24 @@ int main(void) {
 			{
 			case 1:
 				while (1) {
-					system("cls");
+					//system("cls");
 					routenum = 0;
 					printf("\t\t============== Reservation System ===============\n");
 					printf("\t\t\tStart  Date [ ex) '10/26' ] : "); scanf(" %s", startdate);
 					printf("\t\t\tFinish Date [ ex) '10/29' ] : "); scanf(" %s", finishdate);
 					getdateinformation(start, finish, startdate, finishdate);
+                    if(start->day > daypermonth[start->month]){
+                        putchar('\n');
+                        printf("\t\t\tInvalid day value for start date. Please Check your input.\n");
+                        putchar('\n');
+                        continue;
+                    }
+                    if(finish->day > daypermonth[finish->month]){
+                        putchar('\n');
+                        printf("\t\t\tInvalid day value for finish date. Please Check your input.\n");
+                        putchar('\n');
+                        continue;
+                    }
 
 					duration = month_day[finish->month] - month_day[start->month] + finish->day - start->day + 1;
 					if (duration <= 0)
@@ -932,6 +953,7 @@ int main(void) {
 
 								if (path == NULL) {
 									printf("\n\t\t\tThere's no route. Choose another route!\n\n");
+                                    InitTourInfo();
 									i--;
 								}
 								else {
@@ -961,7 +983,7 @@ int main(void) {
 							}
 						}
 					}
-					system("cls");
+					//system("cls");
 					printf("\t\t============== Reservation System ===============\n");
 					printf("\t\t                                                 \n");
 					printf("\n\t\tYour Route is : ");
@@ -975,9 +997,21 @@ int main(void) {
 					}
 					printf("\n\n");
 					result = reserve_schedule(info, start, finish, minroute, budget, routenum, duration);
-					if (result == -1) {
+					if (result == -3) {
 						printf("\n\t\t=> There is no proper route\n");
+                        printf("\n\t\t=> As your duration is not enough to travel these courses\n");
+                        InitTourInfo();
 					}
+                    else if(result == -2){
+                        printf("\n\t\t=> There is no proper route\n");
+                        printf("\n\t\t=> As your money is not enough to reserve the hotels\n");
+                        InitTourInfo();
+                    }
+                    else if(result == -1){
+                        printf("\n\t\t=> There is no proper route\n");
+                        printf("\n\t\t=> As your money is not enough to use for transportation\n");
+                        InitTourInfo();
+                    }
 
 					printf("\t\t                                                 \n");
 					printf("\t\t                                                 \n");
@@ -988,13 +1022,14 @@ int main(void) {
 
 					break;
 				}
+                //check_reservation();
 				printf("\n Press any key to return\n");
 				_getch();
-				_getch();
+				//_getch();
 				//system("cls");
 				break;
 			case 2:
-				system("cls");
+				//system("cls");
 				check_reservation();
 				printf("\n Press any key to return\n");
 				_getch();
